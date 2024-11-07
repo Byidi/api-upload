@@ -1,0 +1,46 @@
+name: Release
+
+on: # yamllint disable-line rule:truthy
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout Code
+        uses: actions/checkout@v4
+      -
+        name: Get Next Version
+        id: semver
+        uses: ietf-tools/semver-action@v1
+        with:
+          token: ${{ github.token }}
+          branch: main
+      -
+        name: Create Release
+        uses: ncipollo/release-action@v1.12.0
+        id: release
+        with:
+          allowUpdates: true
+          draft: false
+          makeLatest: true
+          name: ${{ steps.semver.outputs.next }}
+          tag: ${{ steps.semver.outputs.next }}
+          token: ${{ secrets.PAT }}
+      -
+        name: Generate CHANGELOG
+        id: changelog
+        uses: requarks/changelog-action@v1
+        with:
+          token: ${{ secrets.PAT }}
+          fromTag: ${{ steps.semver.outputs.next }}
+          toTag: ${{ steps.semver.outputs.current }}
+      -
+        name: Update CHANGELOG
+        uses: irongut/EditRelease@v1.2.0
+        with:
+          token: ${{ secrets.PAT }}
+          id: ${{ steps.release.outputs.id }}
+          body: ${{ steps.changelog.outputs.changes }}
+          draft: false
